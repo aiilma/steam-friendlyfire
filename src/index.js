@@ -1,9 +1,12 @@
 const cfg = require('./config');
 const SteamUser = require('steam-user')
+const SteamCommunity = require('steamcommunity');
 const SteamApi = require('web-api-steam')
 
-client = new SteamUser()
+const client = new SteamUser()
+const community = new SteamCommunity();
 
+// Communities
 client.logOn({
     "accountName": cfg.auth.accountName,
     "password": cfg.auth.password,
@@ -47,39 +50,54 @@ client.on('loggedOn', async (details) => {
         const profilesInfo = await Promise.all(actions)
         const filteredUsers = profilesInfo.filter((profile) => profile.personastate == 1)
         return filteredUsers.map(user => user.steamid) // steamids
-    }).then(async (sidList) => {
-        console.info(`Friend Requests has been started! Scan size for new requests: ${sidList.length}`)
+    })
+        .then(async (sidList) => {
+            // filter users by having a background
+            const stats = sidList.map((steamID) => new Promise((resolve, reject) => {
+                community.userWithArtwork(steamID, (err, flag) => {
+                    if (err) reject(err)
+                    return resolve({bg: flag, sid: steamID})
+                })
+            }))
 
-        let countOfRequests = 0
+            sidList = await Promise.all(stats)
+            const usersWithBg = sidList.filter(user => user.bg === true)
+            return usersWithBg.map(user => user.sid)
+        })
+        .then(async (sidList) => {
+            console.info(`Friend Requests has been started! Scan size for new requests: ${sidList.length}`)
 
-        const friendRequestPusher = setInterval(() => {
-            if (sidList.length === 0) {
-                console.info(`All done! :)`)
-                console.info(`Requested ${countOfRequests} of new people`)
-                clearInterval(friendRequestPusher)
-                process.exit(0)
-                return
-            }
+            let countOfRequests = 0
 
-            client.addFriend(sidList[0], (err, personaName) => {
-                if (err) {
+            const friendRequestPusher = setInterval(() => {
+                if (sidList.length === 0) {
+                    console.info(`All done! :)`)
+                    console.info(`Requested ${countOfRequests} of new people`)
                     clearInterval(friendRequestPusher)
-                    console.error(`Ошибка добавления пользователя: ${err}`)
-                    return
-                } else {
-                    console.log(`${countOfRequests + 1} / ${sidList.length} | Request has been sent to => ${sidList[0]} : with name => ${personaName};`)
-                    countOfRequests++
-                    sidList.shift()
+                    process.exit(0)
                     return
                 }
-            })
-        }, cfg.options.timeInterval)
 
-    }).catch((err) => {
-        return err
-    })
+                client.addFriend(sidList[0], (err, personaName) => {
+                    if (err) {
+                        clearInterval(friendRequestPusher)
+                        console.error(`Ошибка добавления пользователя: ${err}`)
+                        return
+                    } else {
+                        console.log(`${countOfRequests + 1} / ${sidList.length} | Request has been sent to => ${sidList[0]} : with name => ${personaName};`)
+                        countOfRequests++
+                        sidList.shift()
+                        return
+                    }
+                })
+            }, cfg.options.timeInterval)
 
-    // console.log(inviteUsersToFriendList)
+        })
+        .catch((err) => {
+            return err
+        })
+
+    console.log(inviteUsersToFriendList)
 });
 
 client.on('error', function (e) {
@@ -88,3 +106,12 @@ client.on('error', function (e) {
     process.exit()
     return
 });
+
+// var title = $('.profile_customization').parent().parent()
+// var titles = $('.profile_customization').filter(function (i, el) {
+//     // this === el
+//     $child = $(this).children('.profile_customization_header')
+//     return $child.text() === 'Витрина иллюстраций' || $child.text() === 'Artwork Showcase';
+// })
+// var flag = (titles.length > 0) ? true : false
+// callback(null, flag);
