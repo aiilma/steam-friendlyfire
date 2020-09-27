@@ -5,29 +5,17 @@ const SteamTotp = require('steam-totp')
 * */
 
 const config = {
-    guard: {
-        "shared_secret": "",
-        "serial_number": "",
-        "revocation_code": "",
-        "uri": "",
-        "server_time": null,
-        "account_name": "",
-        "token_gid": "",
-        "identity_secret": "",
-        "secret_1": "",
-        "status": null
-    },
     auth: {
         "accountName": "",
         "password": "",
-        "apiKey": "",
-        "twoFactorCode": null,
+        "apiKey":"",
+        "twoFactorCode":""
     },
     options: {
-        "targetSteamId": null,
-        "minLevel": null,
-        "maxLevel": null,
-        "timeInterval": null
+        "targetSteamId": "",
+        "minLevel": 5,
+        "maxLevel": 100,
+        "timeInterval": 6 * 1000
     }
 }
 
